@@ -25,7 +25,7 @@ public class ApiErrorException : Exception
         // Note: You generally cannot set the StackTrace property like this.
         // The runtime manages the actual stack trace.
     }
-
+    
     // Serialization constructor - marked obsolete per Microsoft guidance (SYSLIB0051)
     [Obsolete("This API supports obsolete formatter-based serialization. " +
               "It should not be called or extended by application code.", 
