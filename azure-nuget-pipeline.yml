@@ -1,5 +1,7 @@
 trigger: none
 
+pr: none        # Explicitly disable PR triggers (very important)
+
 pool:
   name: 'shared-pool'
   vmImage: 'windows-latest'
