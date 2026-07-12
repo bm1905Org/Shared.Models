@@ -1,6 +1,5 @@
 trigger: none
-
-pr: none        # Explicitly disable PR triggers (very important)
+pr: none
 
 pool:
   name: 'shared-pool'
@@ -18,7 +17,7 @@ jobs:
   steps:
   - task: NuGetAuthenticate@1
 
-  # Extract version from .csproj (semantic versioning)
+  # Extract version from .csproj
   - task: PowerShell@2
     displayName: 'Get version from csproj'
     inputs:
@@ -50,20 +49,9 @@ jobs:
       packagesToPack: '$(project)'
       nobuild: true
       versioningScheme: 'off'
-      # Use the version from csproj
       arguments: '/p:Version=$(GetVersion.PackageVersion)'
 
-  - task: DotNetCoreCLI@2
-    displayName: dotnet push
-    inputs:
-      command: 'push'
-      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-      nuGetFeedType: 'internal'
-      publishVstsFeed: 'bba3d55c-7ef9-4bfe-80bd-2381616bf711'
-      versioningScheme: 'off'
-      allowPackageConflicts: true
-
-  # Create GitHub Release + Tag using version from csproj
+  # === GitHub Release FIRST ===
   - task: GitHubRelease@1
     displayName: 'Create GitHub Release & Tag'
     condition: succeeded()
@@ -76,10 +64,20 @@ jobs:
       tag: 'v$(GetVersion.PackageVersion)'
       title: 'Release v$(GetVersion.PackageVersion)'
       isPreRelease: false
-      # Optional: attach the NuGet package to the GitHub release
       assets: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
       releaseNotesSource: 'filePath'
       releaseNotesFile: '$(Build.SourcesDirectory)/CHANGELOG.md'
+
+  # === NuGet Push AFTER GitHub Release ===
+  - task: DotNetCoreCLI@2
+    displayName: dotnet push
+    inputs:
+      command: 'push'
+      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+      nuGetFeedType: 'internal'
+      publishVstsFeed: 'bba3d55c-7ef9-4bfe-80bd-2381616bf711'
+      versioningScheme: 'off'
+      allowPackageConflicts: true
 
   - task: PublishBuildArtifacts@1
     displayName: publish artifact
