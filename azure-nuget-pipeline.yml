@@ -15,12 +15,32 @@ jobs:
   displayName: Create Nuget Package
   steps:
   - task: NuGetAuthenticate@1
+
+  # Extract version from .csproj (semantic versioning)
+  - task: PowerShell@2
+    displayName: 'Get version from csproj'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $csproj = [xml](Get-Content '$(project)')
+        $version = $csproj.Project.PropertyGroup.Version
+        if (-not $version) {
+          $version = $csproj.Project.PropertyGroup.AssemblyVersion
+        }
+        if (-not $version) {
+          $version = "1.0.0"  # fallback
+        }
+        Write-Host "Detected version: $version"
+        Write-Host "##vso[task.setvariable variable=PackageVersion;isOutput=true]$version"
+    name: GetVersion
+
   - task: DotNetCoreCLI@2
     displayName: dotnet build
     inputs:
       command: 'build'
       arguments: '--configuration $(buildConfiguration)'
       projects: '$(project)'
+
   - task: DotNetCoreCLI@2
     displayName: dotnet pack
     inputs:
@@ -28,6 +48,9 @@ jobs:
       packagesToPack: '$(project)'
       nobuild: true
       versioningScheme: 'off'
+      # Use the version from csproj
+      arguments: '/p:Version=$(GetVersion.PackageVersion)'
+
   - task: DotNetCoreCLI@2
     displayName: dotnet push
     inputs:
@@ -37,10 +60,28 @@ jobs:
       publishVstsFeed: 'bba3d55c-7ef9-4bfe-80bd-2381616bf711'
       versioningScheme: 'off'
       allowPackageConflicts: true
+
+  # Create GitHub Release + Tag using version from csproj
+  - task: GitHubRelease@1
+    displayName: 'Create GitHub Release & Tag'
+    condition: succeeded()
+    inputs:
+      gitHubConnection: 'github.com_bm1905Org'
+      repositoryName: 'bm1905Org/Shared.Models'
+      action: 'create'
+      target: '$(Build.SourceVersion)'
+      tagSource: 'userSpecifiedTag'
+      tag: 'v$(GetVersion.PackageVersion)'
+      title: 'Release v$(GetVersion.PackageVersion)'
+      isPreRelease: false
+      # Optional: attach the NuGet package to the GitHub release
+      assets: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
+      releaseNotesSource: 'file'
+      releaseNotesFile: '$(Build.SourcesDirectory)/CHANGELOG.md'
+
   - task: PublishBuildArtifacts@1
     displayName: publish artifact
     inputs:
       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
       TargetPath: '\\Shared.Models\$(Build.DefinitionName)\$(Build.BuildNumber)'
       publishLocation: 'Container'
-  
