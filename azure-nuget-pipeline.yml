@@ -78,7 +78,7 @@ jobs:
       isPreRelease: false
       # Optional: attach the NuGet package to the GitHub release
       assets: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
-      releaseNotesSource: 'file'
+      releaseNotesSource: 'filePath'
       releaseNotesFile: '$(Build.SourcesDirectory)/CHANGELOG.md'
 
   - task: PublishBuildArtifacts@1
