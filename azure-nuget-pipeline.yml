@@ -51,10 +51,21 @@ jobs:
       versioningScheme: 'off'
       arguments: '/p:Version=$(GetVersion.PackageVersion)'
 
-  # === GitHub Release FIRST ===
+  # NuGet Push FIRST
+  - task: DotNetCoreCLI@2
+    displayName: dotnet push
+    inputs:
+      command: 'push'
+      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+      nuGetFeedType: 'internal'
+      publishVstsFeed: 'bba3d55c-7ef9-4bfe-80bd-2381616bf711'
+      versioningScheme: 'off'
+      allowPackageConflicts: true
+
+  # GitHub Release ONLY if push succeeded
   - task: GitHubRelease@1
     displayName: 'Create GitHub Release & Tag'
-    condition: succeeded()
+    condition: succeeded()          # This ensures it runs only on success
     inputs:
       gitHubConnection: 'github.com_bm1905Org'
       repositoryName: 'bm1905Org/Shared.Models'
@@ -67,17 +78,6 @@ jobs:
       assets: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
       releaseNotesSource: 'filePath'
       releaseNotesFile: '$(Build.SourcesDirectory)/CHANGELOG.md'
-
-  # === NuGet Push AFTER GitHub Release ===
-  - task: DotNetCoreCLI@2
-    displayName: dotnet push
-    inputs:
-      command: 'push'
-      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-      nuGetFeedType: 'internal'
-      publishVstsFeed: 'bba3d55c-7ef9-4bfe-80bd-2381616bf711'
-      versioningScheme: 'off'
-      allowPackageConflicts: true
 
   - task: PublishBuildArtifacts@1
     displayName: publish artifact
